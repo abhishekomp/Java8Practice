@@ -1,31 +1,101 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+# ══════════════════════════════════════════════════════════════════════════════
+# CI Workflow — Build & Test on every push / pull request
+#
+# PURPOSE:
+#   This is the main continuous integration (CI) workflow.
+#   It runs automatically on every push to master and on every pull request
+#   targeting master.  Its job is to be a safety net: catch broken code before
+#   it lands in the main branch.
+#
+# WHAT IT DOES:
+#   1. Checks out the latest code
+#   2. Sets up Java 21 (Temurin distribution — free, open-source Eclipse build)
+#   3. Runs ALL tests via "mvn test"
+#
+# HOW TO READ THIS FILE:
+#   YAML uses indentation to show hierarchy.  Two spaces = one level deeper.
+#   Keys ending in ":" introduce a block.  Lines starting with "-" are list items.
+# ══════════════════════════════════════════════════════════════════════════════
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+name: CI — Build & Test All
 
-name: Java CI with Maven
-
+# ──────────────────────────────────────────────────────────────────────────────
+# TRIGGERS  (the "on:" block)
+# Defines WHEN this workflow runs.
+# ──────────────────────────────────────────────────────────────────────────────
 on:
   push:
     branches: [ "master" ]
+    # Runs every time someone pushes a commit directly to master.
+
   pull_request:
     branches: [ "master" ]
+    # Runs every time a PR is opened, updated, or re-opened against master.
+    # This lets you see test results BEFORE merging — vital for code review.
 
+# ──────────────────────────────────────────────────────────────────────────────
+# CONCURRENCY
+# If a new push arrives while this workflow is still running for an older push,
+# cancel the older run.  This saves CI minutes and keeps results fresh.
+# The group key uses the branch/PR ref so different branches don't cancel each other.
+# ──────────────────────────────────────────────────────────────────────────────
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PERMISSIONS
+# Principle of least privilege — only grant what this workflow actually needs.
+# "contents: read" allows checking out the repository code (read-only).
+# Keeping permissions minimal reduces the blast radius if the workflow is
+# ever exploited through a malicious dependency.
+# ──────────────────────────────────────────────────────────────────────────────
+permissions:
+  contents: read
+
+# ──────────────────────────────────────────────────────────────────────────────
+# JOBS
+# A workflow is made up of one or more jobs.
+# Jobs run in parallel by default unless you add "needs:" dependencies.
+# ──────────────────────────────────────────────────────────────────────────────
 jobs:
-  build:
 
+  build-and-test:
+    # The runner is a fresh virtual machine GitHub spins up for each run.
+    # ubuntu-latest is the most common choice — fast, free, and Linux.
     runs-on: ubuntu-latest
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # STEPS
+    # Steps run sequentially inside the job, top to bottom.
+    # If any step fails (non-zero exit code), the job stops and is marked failed.
+    # ──────────────────────────────────────────────────────────────────────────
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      run: mvn test --file pom.xml
+
+      # STEP 1 — Checkout
+      # "uses:" means "run a pre-built action from the GitHub Actions Marketplace".
+      # actions/checkout clones your repository into the runner's workspace so
+      # subsequent steps can access your code.
+      # v4 is the latest major version — always pin to a major version tag.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # STEP 2 — Set up Java
+      # Installs the specified JDK on the runner.
+      # java-version: '21'   → Java 21 LTS (matches pom.xml compiler target)
+      # distribution: temurin → Eclipse Temurin (formerly AdoptOpenJDK) — free & reliable
+      # cache: maven          → caches ~/.m2/repository between runs; speeds up builds
+      #                         by not re-downloading dependencies every time.
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # STEP 3 — Run all tests
+      # --no-transfer-progress suppresses the verbose download progress bars that
+      # clutter CI logs.  --batch-mode (-B) disables interactive prompts so Maven
+      # never hangs waiting for input.
+      - name: Run all tests with Maven
+        run: mvn test --no-transfer-progress --batch-mode --file pom.xml

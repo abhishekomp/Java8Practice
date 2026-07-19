@@ -1,35 +1,63 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+# ══════════════════════════════════════════════════════════════════════════════
+# Ecommerce Unit Tests Workflow
+#
+# PURPOSE:
+#   Runs only the tests tagged @Tag("ecomm-unit-tests") on demand.
+#   Unit tests are fast and focused — they test a single class in isolation
+#   without hitting databases, APIs, or file systems.
+#
+# TRIGGER:
+#   "workflow_dispatch" means this workflow is triggered MANUALLY from the
+#   GitHub Actions UI (Actions tab → select this workflow → "Run workflow").
+#   It does NOT run automatically on push.
+#
+# WHEN TO USE:
+#   - After a targeted feature change when you only want to validate unit-level
+#     behaviour quickly without waiting for the full test suite.
+#   - As part of a scripted release process where unit tests are verified first.
+# ══════════════════════════════════════════════════════════════════════════════
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+name: Ecommerce — Unit Tests
 
-name: Ecommerce - Run Unit Tests
-
-# Controls when the workflow will run
+# ──────────────────────────────────────────────────────────────────────────────
+# TRIGGER
+# workflow_dispatch  → manual trigger only (button in the GitHub UI or via API).
+# No push/pull_request triggers here — this is an on-demand workflow.
+# ──────────────────────────────────────────────────────────────────────────────
 on:
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# ──────────────────────────────────────────────────────────────────────────────
+# PERMISSIONS — read-only access to repository contents is all we need.
+# ──────────────────────────────────────────────────────────────────────────────
+permissions:
+  contents: read
+
 jobs:
-  # This workflow contains a single job named "unit-test-job"
+
+  # The job ID ("unit-test-job") appears in the GitHub Actions UI and in logs.
+  # Use a descriptive ID — avoid generic names like "build".
   unit-test-job:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - name: Step 1 - Checkout master branch from Github
-      uses: actions/checkout@v3
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      run: mvn test -Dgroups="ecomm-unit-tests"
-      #run: mvn -B package --file pom.xml
+
+      # STEP 1 — Check out the code so Maven can find pom.xml and source files.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # STEP 2 — Install Java 21 and restore the Maven dependency cache.
+      # The cache key is based on pom.xml — if pom.xml hasn't changed, the
+      # cached ~/.m2 folder is restored, skipping re-downloads (~30s saved).
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # STEP 3 — Run only @Tag("ecomm-unit-tests") tests.
+      # -Dgroups maps to JUnit 5 tag filtering via the Surefire plugin.
+      # Only tests annotated with @Tag("ecomm-unit-tests") will be executed.
+      - name: Run unit tests (tag = ecomm-unit-tests)
+        run: mvn test --no-transfer-progress --batch-mode -Dgroups="ecomm-unit-tests"

@@ -1,35 +1,60 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+# ══════════════════════════════════════════════════════════════════════════════
+# Ecommerce Sanity Tests Workflow
+#
+# PURPOSE:
+#   Runs only the tests tagged @Tag("ecomm-sanity") on demand.
+#   Sanity (smoke) tests are a small, critical subset of tests designed to
+#   answer one question quickly: "Is the application fundamentally working?"
+#
+#   They typically cover the most important happy paths — not edge cases.
+#   Run them after a deployment to verify nothing catastrophic broke.
+#
+# TRIGGER:
+#   Manual only (workflow_dispatch).  Typical usage:
+#     1. Deploy to a staging environment
+#     2. Trigger this workflow to verify the deployment succeeded
+#     3. Only if sanity passes → proceed with full regression or release
+#
+# DIFFERENCE FROM UNIT TESTS:
+#   Unit tests  → validate individual classes/methods (fast, isolated)
+#   Sanity tests → validate the most critical end-to-end flows are not broken
+# ══════════════════════════════════════════════════════════════════════════════
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+name: Ecommerce — Sanity Tests
 
-name: Ecommerce - Run Sanity Tests
-
-# Controls when the workflow will run
+# ──────────────────────────────────────────────────────────────────────────────
+# TRIGGER — manual only.
+# ──────────────────────────────────────────────────────────────────────────────
 on:
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# ──────────────────────────────────────────────────────────────────────────────
+# PERMISSIONS — read-only.
+# ──────────────────────────────────────────────────────────────────────────────
+permissions:
+  contents: read
+
 jobs:
-  # This workflow contains a single job named "build"
-  build:
-    # The type of runner that the job will run on
+
+  # Job ID is "sanity-test-job" — descriptive names make CI dashboards readable.
+  sanity-test-job:
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - name: Step 1 - Checkout master branch from Github
-      uses: actions/checkout@v3
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      run: mvn test -Dgroups="ecomm-sanity"
-      #run: mvn -B package --file pom.xml
+
+      # STEP 1 — Checkout source code.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # STEP 2 — Install JDK 21 with Maven cache.
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # STEP 3 — Run only @Tag("ecomm-sanity") tests.
+      # These are the fast smoke tests that verify core functionality.
+      - name: Run sanity tests (tag = ecomm-sanity)
+        run: mvn test --no-transfer-progress --batch-mode -Dgroups="ecomm-sanity"

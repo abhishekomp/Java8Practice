@@ -2,39 +2,105 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <!-- Maven POM model version — always 4.0.0 for Maven 2/3/4 -->
     <modelVersion>4.0.0</modelVersion>
 
+    <!--
+        Project coordinates — uniquely identify this artifact in a Maven repository.
+          groupId    : reverse-domain organisation name
+          artifactId : name of the jar/module
+          version    : SNAPSHOT = work in progress, not a stable release
+    -->
     <groupId>org.abhishek</groupId>
     <artifactId>Java8Practice</artifactId>
     <version>1.0-SNAPSHOT</version>
+
+    <!--
+        ─────────────────────────────────────────────────────────────
+        PROPERTIES
+        Central place to define versions and compiler settings.
+        Referencing them as ${property.name} keeps the POM DRY
+        (Don't Repeat Yourself) — change a version here once and
+        it updates everywhere it is used below.
+        ─────────────────────────────────────────────────────────────
+    -->
+    <properties>
+        <!-- Java 21 (LTS) — enables: records, sealed classes, pattern matching,
+             switch expressions, text blocks, Stream.toList(), and more. -->
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+
+        <!-- AssertJ — fluent, readable assertions in tests.
+             e.g.  assertThat(result).isEqualTo("expected")  -->
+        <assertj.version>3.19.0</assertj.version>
+    </properties>
+
+    <!--
+        ─────────────────────────────────────────────────────────────
+        DEPENDENCIES
+        Libraries this project needs at compile / runtime / test time.
+        <scope>test</scope> means the jar is only on the test classpath
+        and will NOT be bundled into the production jar.
+        ─────────────────────────────────────────────────────────────
+    -->
     <dependencies>
+
+        <!--
+            JUnit Jupiter (JUnit 5) — the testing framework.
+            This single aggregator dependency pulls in:
+              - junit-jupiter-api       (write tests with @Test, @Tag, etc.)
+              - junit-jupiter-engine    (run those tests)
+              - junit-jupiter-params    (parameterised tests)
+            Pin to a specific version instead of RELEASE for reproducible builds.
+        -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>RELEASE</version>
+            <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+
+        <!--
+            AssertJ Core — fluent assertion library.
+            Produces much clearer failure messages than plain JUnit assertions
+            and supports rich collection/string/exception assertions.
+        -->
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
-    <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <assertj.version>3.19.0</assertj.version>
-    </properties>
-
+    <!--
+        ─────────────────────────────────────────────────────────────
+        BUILD
+        Plugin configuration that controls how Maven compiles,
+        tests, and packages the project.
+        ─────────────────────────────────────────────────────────────
+    -->
     <build>
         <plugins>
+
+            <!--
+                Maven Surefire Plugin — runs unit tests during the
+                "test" lifecycle phase.
+                Version 2.22.2+ is required for full JUnit 5 support.
+                The <groups> property (set on the command line via
+                -Dgroups="tagName") lets you filter which @Tag-annotated
+                tests to run, e.g.:
+                    mvn test -Dgroups="integration"
+                    mvn test -Dgroups="ecomm-unit-tests"
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>3.2.5</version>
             </plugin>
+
         </plugins>
     </build>
 
